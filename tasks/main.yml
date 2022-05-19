@@ -1,0 +1,104 @@
+---
+# tasks file for ansible-k8s-argo
+- name: SHELL; locate helm binary
+  shell: 
+    cmd: command -v helm
+  register: helm_found
+  ignore_errors: true
+
+- name: SHELL; install helm, if not found
+  shell:
+    cmd: curl https://raw.githubusercontent.com/helm/helm/HEAD/scripts/get-helm-3 | bash
+  when: helm_found is failed
+
+- name: SHELL; download the latest kubectl
+  shell: 
+    cmd: curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+    chdir: /tmp
+
+- name: SHELL; install kubectl
+  shell:
+    cmd: install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+    chdir: /tmp
+
+- name: GET_URL; download natscli
+  get_url:
+    url: "https://github.com/nats-io/natscli/releases/download/v{{ NATSCLI_VERSION }}/nats-{{ NATSCLI_VERSION }}-amd64.deb"
+    dest: "/tmp/nats-{{ NATSCLI_VERSION }}-amd64.deb"
+    mode: '0644'
+
+- name: APT; install the natscli deb package
+  apt:
+    deb: "/tmp/nats-{{ NATSCLI_VERSION }}-amd64.deb"
+
+- name: FILE; create /opt/cyverse-k8s-argo
+  file:
+    path: /opt/cyverse-k8s-argo
+    mode: 0755
+    state: directory
+
+- name: COPY; copy over necessary resource files
+  copy:
+    src: "{{ item }}"
+    dest: "/opt/cyverse-k8s-argo/{{ item }}"
+    mode: 0644
+  loop:
+    - nats.yaml
+    - argo-ns.yaml
+    - argo-default-cluster-role.yaml
+
+# - name: K8S; deploy resource files in /opt/cyverse-k8s-argo/
+#   kubernetes.core.k8s:
+#     state: present
+#     src: /opt/cyverse-k8s-argo/
+
+- name: SHELL; deploy resource files in /opt/cyverse-k8s-argo/
+  shell:
+    cmd: kubectl apply -f /opt/cyverse-k8s-argo/
+
+- name: SHELL; deploy argo workflow resources
+  shell:
+    cmd: "kubectl apply -n argo -f {{ item }}"
+  loop:
+    - https://github.com/argoproj/argo-workflows/releases/download/v3.2.6/install.yaml
+    - https://raw.githubusercontent.com/argoproj/argo-workflows/stable/manifests/cluster-install/workflow-controller-rbac/workflow-aggregate-roles.yaml
+    - https://raw.githubusercontent.com/argoproj/argo-workflows/stable/manifests/cluster-install/workflow-controller-rbac/workflow-controller-clusterrole.yaml
+    - https://raw.githubusercontent.com/argoproj/argo-workflows/stable/manifests/cluster-install/workflow-controller-rbac/workflow-controller-clusterrolebinding.yaml
+    - https://raw.githubusercontent.com/argoproj/argo-workflows/stable/manifests/cluster-install/workflow-controller-rbac/workflow-controller-role.yaml
+    - https://raw.githubusercontent.com/argoproj/argo-workflows/stable/manifests/cluster-install/workflow-controller-rbac/workflow-controller-rolebinding.yaml
+
+- name: SHELL; deploy argo events resources
+  shell:
+    cmd: "kubectl apply -n argo -f {{ item }}"
+  loop:
+    - https://github.com/argoproj/argo-workflows/releases/download/v3.2.6/install.yaml
+    - https://raw.githubusercontent.com/argoproj/argo-workflows/stable/manifests/cluster-install/workflow-controller-rbac/workflow-aggregate-roles.yaml
+    - https://raw.githubusercontent.com/argoproj/argo-workflows/stable/manifests/cluster-install/workflow-controller-rbac/workflow-controller-clusterrole.yaml
+    - https://raw.githubusercontent.com/argoproj/argo-workflows/stable/manifests/cluster-install/workflow-controller-rbac/workflow-controller-clusterrolebinding.yaml
+    - https://raw.githubusercontent.com/argoproj/argo-workflows/stable/manifests/cluster-install/workflow-controller-rbac/workflow-controller-role.yaml
+    - https://raw.githubusercontent.com/argoproj/argo-workflows/stable/manifests/cluster-install/workflow-controller-rbac/workflow-controller-rolebinding.yaml
+
+- name: SHELL; deploy argo events primary resources
+  shell:
+    cmd: "kubectl apply -f {{ item }}"
+  loop:
+    - https://raw.githubusercontent.com/argoproj/argo-events/stable/manifests/install.yaml
+    - https://raw.githubusercontent.com/argoproj/argo-events/stable/manifests/install-validating-webhook.yaml
+
+- name: COPY; copy over necessary argo events resource files
+  copy:
+    src: "{{ item }}"
+    dest: "/opt/cyverse-k8s-argo/{{ item }}"
+    mode: 0644
+  loop:
+    - argo-eventbus-nats.yaml
+    - argo-events-nats-eventsource.yaml
+
+- name: SHELL; deploy argo events additional resources
+  shell:
+    cmd: "kubectl apply -n argo-events -f {{ item }}"
+  loop:
+    - /opt/cyverse-k8s-argo/argo-eventbus-nats.yaml
+    - /opt/cyverse-k8s-argo/argo-events-nats-eventsource.yaml
+    - https://raw.githubusercontent.com/argoproj/argo-events/stable/examples/rbac/sensor-rbac.yaml
+    - https://raw.githubusercontent.com/argoproj/argo-events/stable/examples/rbac/workflow-rbac.yaml

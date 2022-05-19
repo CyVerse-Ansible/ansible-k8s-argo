@@ -1,0 +1,3 @@
+---
+# defaults file for ansible-k8s-argo
+NATSCLI_VERSION: "0.0.32"
