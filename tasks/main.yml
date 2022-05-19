@@ -31,11 +31,31 @@
   apt:
     deb: "/tmp/nats-{{ NATSCLI_VERSION }}-amd64.deb"
 
+- name: GET_URL; download argo cli
+  get_url:
+    url: "https://github.com/argoproj/argo-workflows/releases/download/v{{ ARGOCLI_VERSION }}/argo-linux-amd64.gz"
+    dest: "/tmp/argo-linux-amd64.{{ ARGOCLI_VERSION }}.gz"
+    mode: '0644'
+
+- name: SHELL; unzip argo binary
+  shell:
+    cmd: "gunzip /tmp/argo-linux-amd64.{{ ARGOCLI_VERSION }}.gz; chmod a+x /tmp/argo-linux-amd64; cp /tmp/argo-linux-amd64 /usr/local/bin/argo"
+    args:
+      chdir: /tmp
+      creates: /tmp/argo-linux-amd64
+
+
+
 - name: FILE; create /opt/cyverse-k8s-argo
   file:
     path: /opt/cyverse-k8s-argo
     mode: 0755
     state: directory
+
+# - name: SHELL; install nginx ingress repo
+#   shell: helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+# - name: SHELL; install nginx ingress
+#   shell: helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx
 
 - name: COPY; copy over necessary resource files
   copy:
