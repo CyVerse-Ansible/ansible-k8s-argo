@@ -38,10 +38,11 @@
     mode: '0644'
 
 - name: SHELL; unzip argo binary
-  shell: "gunzip /tmp/argo-linux-amd64.{{ ARGOCLI_VERSION }}.gz; chmod a+x /tmp/argo-linux-amd64; cp /tmp/argo-linux-amd64 /usr/local/bin/argo"
-    args:
-      chdir: /tmp
-      creates: /tmp/argo-linux-amd64
+  shell:
+    cmd: "gunzip /tmp/argo-linux-amd64.{{ ARGOCLI_VERSION }}.gz; chmod a+x /tmp/argo-linux-amd64.{{ ARGOCLI_VERSION }}; cp /tmp/argo-linux-amd64.{{ ARGOCLI_VERSION }} /usr/local/bin/argo"
+    # args:
+    #   chdir: /tmp
+    #   creates: /tmp/argo-linux-amd64
 
 - name: FILE; create /opt/cyverse-k8s-argo
   file:
